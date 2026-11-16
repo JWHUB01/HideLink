@@ -23,6 +23,7 @@ import { useMutation } from '@tanstack/react-query';
 import {
   CircleAlert,
   LoaderCircle,
+  Plus,
   Save,
   ShieldCheck,
   SlidersHorizontal,
@@ -313,26 +314,11 @@ function CountryPicker({
     <fieldset className="flex flex-col gap-1.5" disabled={disabled}>
       <legend className="text-sm font-medium">{legend}</legend>
 
-      {selected.length > 0 ? (
-        <ul className="flex flex-wrap gap-1.5">
-          {selected.map((country) => (
-            <li key={country}>
-              <button
-                type="button"
-                onClick={() => onToggle(country)}
-                aria-label={t('Убрать {value}', { value: countryLabel(country) })}
-                className={cn(chipClass(true), 'flex items-center gap-1.5')}
-              >
-                <span translate="no">{countryLabel(country)}</span>
-                <X className="size-3.5 text-muted-foreground" aria-hidden="true" />
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="text-xs text-muted-foreground">{t('Не выбрана ни одна страна.')}</p>
-      )}
-
+      {/*
+        The select comes first, right under its label, exactly as the profile's country
+        field does; the chosen countries become removable chips below it (owner request
+        2026-11-15).
+      */}
       <label className="sr-only" htmlFor={`${legend}-add`}>
         {t('Добавить страну')}
       </label>
@@ -354,6 +340,26 @@ function CountryPicker({
           </option>
         ))}
       </select>
+
+      {selected.length > 0 ? (
+        <ul className="flex flex-wrap gap-1.5">
+          {selected.map((country) => (
+            <li key={country}>
+              <button
+                type="button"
+                onClick={() => onToggle(country)}
+                aria-label={t('Убрать {value}', { value: countryLabel(country) })}
+                className={cn(chipClass(true), 'flex items-center gap-1.5')}
+              >
+                <span translate="no">{countryLabel(country)}</span>
+                <X className="size-3.5 text-muted-foreground" aria-hidden="true" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-xs text-muted-foreground">{t('Не выбрана ни одна страна.')}</p>
+      )}
     </fieldset>
   );
 }
@@ -424,11 +430,16 @@ function PlacePicker({
     <fieldset className="flex flex-col gap-1.5" disabled={disabled}>
       <legend className="text-sm font-medium">{legend}</legend>
 
-      <div className="flex items-center gap-2">
+      {/*
+        The field keeps the full width of its column, like the profile's city and region:
+        the "add" action rides inside it as an icon button instead of a caption beside it
+        (owner request 2026-11-15). Enter still adds, and the datalist still suggests.
+      */}
+      <div className="relative">
         <Input
           id={id}
           aria-label={legend}
-          className="min-w-0 flex-1"
+          className="w-full pr-10"
           list={`${id}-suggestions`}
           value={draft}
           onChange={(event) => onDraftChange(event.target.value)}
@@ -451,12 +462,14 @@ function PlacePicker({
         <Button
           type="button"
           variant="outline"
-          className="shrink-0"
+          size="icon"
+          className="absolute top-1/2 right-1 size-7 -translate-y-1/2"
           aria-label={addLabel}
+          title={addLabel}
           onClick={onAdd}
           disabled={disabled || full || draft.trim().length === 0}
         >
-          {t('Добавить')}
+          <Plus className="size-4" aria-hidden="true" />
         </Button>
       </div>
 
@@ -848,41 +861,47 @@ function FiltersSection({ session }: { session: SessionInfo }) {
           disabled={save.isPending}
         />
 
-        <PlacePicker
-          id="filter-cities"
-          legend={t('Города')}
-          values={cities}
-          draft={cityDraft}
-          options={CITY_SUGGESTIONS}
-          addLabel={t('Добавить город')}
-          placeholder={t('Начните вводить название')}
-          emptyHint={t('Не выбран ни один город.')}
-          onDraftChange={setCityDraft}
-          onAdd={() => {
-            setCities((current) => addPendingPlace(current, cityDraft));
-            setCityDraft('');
-          }}
-          onRemove={(value) => setCities((current) => current.filter((item) => item !== value))}
-          disabled={save.isPending}
-        />
+        {/*
+          Cities and regions sit side by side, in the same two-column grid as the
+          profile's own city and region (owner request 2026-11-15).
+        */}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <PlacePicker
+            id="filter-cities"
+            legend={t('Города')}
+            values={cities}
+            draft={cityDraft}
+            options={CITY_SUGGESTIONS}
+            addLabel={t('Добавить город')}
+            placeholder={t('Начните вводить название')}
+            emptyHint={t('Не выбран ни один город.')}
+            onDraftChange={setCityDraft}
+            onAdd={() => {
+              setCities((current) => addPendingPlace(current, cityDraft));
+              setCityDraft('');
+            }}
+            onRemove={(value) => setCities((current) => current.filter((item) => item !== value))}
+            disabled={save.isPending}
+          />
 
-        <PlacePicker
-          id="filter-regions"
-          legend={t('Регионы')}
-          values={regions}
-          draft={regionDraft}
-          options={REGION_SUGGESTIONS}
-          addLabel={t('Добавить регион')}
-          placeholder={t('Начните вводить название')}
-          emptyHint={t('Не выбран ни один регион.')}
-          onDraftChange={setRegionDraft}
-          onAdd={() => {
-            setRegions((current) => addPendingPlace(current, regionDraft));
-            setRegionDraft('');
-          }}
-          onRemove={(value) => setRegions((current) => current.filter((item) => item !== value))}
-          disabled={save.isPending}
-        />
+          <PlacePicker
+            id="filter-regions"
+            legend={t('Регионы')}
+            values={regions}
+            draft={regionDraft}
+            options={REGION_SUGGESTIONS}
+            addLabel={t('Добавить регион')}
+            placeholder={t('Начните вводить название')}
+            emptyHint={t('Не выбран ни один регион.')}
+            onDraftChange={setRegionDraft}
+            onAdd={() => {
+              setRegions((current) => addPendingPlace(current, regionDraft));
+              setRegionDraft('');
+            }}
+            onRemove={(value) => setRegions((current) => current.filter((item) => item !== value))}
+            disabled={save.isPending}
+          />
+        </div>
       </fieldset>
 
       <LanguagePicker

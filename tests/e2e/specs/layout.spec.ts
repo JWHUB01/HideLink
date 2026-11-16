@@ -49,6 +49,13 @@ test.describe('the one page on a phone-sized screen', () => {
     ).toBeVisible();
     await expect(settingsToggle(alice.page)).toBeVisible();
 
+    // The two contact lists are reachable as small buttons and start closed, so the space
+    // under the search card stays free (owner request 2026-11-15).
+    await expect(alice.page.getByRole('button', { name: /^Друзья/ })).toBeVisible();
+    await expect(alice.page.getByRole('button', { name: /^Заблокированные/ })).toBeVisible();
+    await expect(alice.page.getByRole('heading', { name: /^Друзья/ })).toHaveCount(0);
+    await expect(alice.page.getByRole('heading', { name: /^Заблокированные/ })).toHaveCount(0);
+
     expect(await horizontalOverflow(alice.page), 'the idle page overflows sideways').toBeNull();
 
     // The settings are the densest part of the page — two columns side by side on a wide

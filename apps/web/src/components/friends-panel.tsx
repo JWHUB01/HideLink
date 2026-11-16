@@ -7,6 +7,8 @@ import {
 } from '@anonlink/shared';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
+  ChevronDown,
+  ChevronUp,
   CircleAlert,
   LoaderCircle,
   RefreshCw,
@@ -46,6 +48,7 @@ export function FriendsPanel() {
   const notify = useAppStore((state) => state.notify);
 
   const [removing, setRemoving] = useState<FriendView | null>(null);
+  const [open, setOpen] = useState(false);
 
   const friends = useQuery({
     queryKey: ['friends', friendsVersion],
@@ -80,152 +83,188 @@ export function FriendsPanel() {
   const list = friends.data?.friends ?? [];
 
   return (
-    <Card aria-busy={friends.isFetching}>
-      <CardHeader className="flex-row items-start justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <CardTitle id="friends-heading" className="flex items-center gap-2">
-            <UsersRound className="size-4 text-primary" aria-hidden="true" />
-            {t('Друзья')}
-            {friends.isSuccess ? <Badge>{list.length}</Badge> : null}
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            {t('Друзья сохраняются, пока вы сами не удалите контакт.')}
-          </p>
-        </div>
-
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => void friends.refetch()}
-          disabled={friends.isFetching}
-          aria-label={t('Обновить список друзей')}
-        >
-          <RefreshCw
-            className={friends.isFetching ? 'size-4 animate-spin' : 'size-4'}
-            aria-hidden="true"
-          />
-        </Button>
-      </CardHeader>
-
-      <CardContent className="flex flex-col gap-3">
-        {friends.isPending ? (
-          <p className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
-            <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
-            {t('Загружаем друзей…')}
-          </p>
-        ) : null}
-
-        {friends.isError ? (
-          <p className="flex items-center gap-2 text-sm text-destructive" role="alert">
-            <CircleAlert className="size-4 shrink-0" aria-hidden="true" />
-            {describeError(friends.error, locale)}
-          </p>
-        ) : null}
-
-        {friends.isSuccess && list.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            {t(
-              'У вас пока нет друзей. Добавить в друзья можно во время чата — по обоюдному согласию.',
-            )}
-          </p>
-        ) : null}
-
-        {list.length > 0 ? (
-          <ul className="flex flex-col gap-2" aria-label={t('Список друзей')}>
-            {list.map((friend) => (
-              <li
-                key={friend.publicId}
-                className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-background p-2"
-              >
-                <UserRound className="size-4 shrink-0 text-primary" aria-hidden="true" />
-
-                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <code
-                    translate="no"
-                    className="truncate font-mono text-sm text-foreground"
-                    title={friend.publicId}
-                  >
-                    {formatPublicIdForDisplay(friend.publicId)}
-                  </code>
-                  <span className="text-xs text-muted-foreground">
-                    {t('Добавлен: {date}', {
-                      date: formatDateTime(friend.since, locale),
-                    })}
-                  </span>
-                </div>
-
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => send.mutate(friend.publicId)}
-                  disabled={send.isPending || outgoingRequest !== null}
-                >
-                  {send.isPending ? (
-                    <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
-                  ) : (
-                    <Send className="size-4" aria-hidden="true" />
-                  )}
-                  <span className="sr-only sm:not-sr-only">{t('Написать')}</span>
-                </Button>
-
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setRemoving(friend)}
-                  aria-label={t('Удалить {id} из друзей', { id: friend.publicId })}
-                >
-                  <UserMinus className="size-4" aria-hidden="true" />
-                  <span className="sr-only sm:not-sr-only">{t('Удалить')}</span>
-                </Button>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-      </CardContent>
-
-      <Dialog
-        open={removing !== null}
-        title={t('Удалить контакт?')}
-        description={t(
-          'Вы больше не увидите этот User ID в списке друзей. Если вы снова встретитесь в чате, сможете добавить друг друга заново.',
-        )}
-        onClose={() => setRemoving(null)}
+    <div className="flex flex-col gap-2">
+      {/*
+        Collapsed by default (owner request 2026-11-15): a durable contact list is opened
+        on purpose, and the space it frees under the search card stays available for
+        advertising (D28). The count is still visible while it is closed, so a new friend
+        is not something the user has to open the panel to notice.
+      */}
+      <Button
+        variant="outline"
+        size="sm"
+        className="w-fit"
+        onClick={() => {
+          const next = !open;
+          setOpen(next);
+          if (!next) setRemoving(null);
+        }}
+        aria-expanded={open}
+        aria-controls="friends-panel"
       >
-        {removing ? (
-          <div className="flex flex-col gap-3">
-            <code
-              translate="no"
-              className="w-fit rounded border border-border bg-muted px-2 py-1 font-mono text-sm"
-            >
-              {formatPublicIdForDisplay(removing.publicId)}
-            </code>
+        <UsersRound className="size-3.5" aria-hidden="true" />
+        {t('Друзья')}
+        {friends.isSuccess ? <Badge>{list.length}</Badge> : null}
+        {open ? (
+          <ChevronUp className="size-3.5" aria-hidden="true" />
+        ) : (
+          <ChevronDown className="size-3.5" aria-hidden="true" />
+        )}
+      </Button>
 
-            {remove.isError ? (
-              <p className="text-sm text-destructive" role="alert">
-                {describeError(remove.error, locale)}
+      {open ? (
+        <Card id="friends-panel" aria-busy={friends.isFetching}>
+          <CardHeader className="flex-row items-start justify-between gap-3">
+            <div className="flex flex-col gap-1">
+              <CardTitle id="friends-heading" className="flex items-center gap-2">
+                <UsersRound className="size-4 text-primary" aria-hidden="true" />
+                {t('Друзья')}
+                {friends.isSuccess ? <Badge>{list.length}</Badge> : null}
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                {t('Друзья сохраняются, пока вы сами не удалите контакт.')}
+              </p>
+            </div>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void friends.refetch()}
+              disabled={friends.isFetching}
+              aria-label={t('Обновить список друзей')}
+            >
+              <RefreshCw
+                className={friends.isFetching ? 'size-4 animate-spin' : 'size-4'}
+                aria-hidden="true"
+              />
+            </Button>
+          </CardHeader>
+
+          <CardContent className="flex flex-col gap-3">
+            {friends.isPending ? (
+              <p className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
+                <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
+                {t('Загружаем друзей…')}
               </p>
             ) : null}
 
-            <div className="flex justify-end gap-2">
-              <Button variant="ghost" onClick={() => setRemoving(null)} disabled={remove.isPending}>
-                {t('Отмена')}
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={() => remove.mutate(removing.publicId)}
-                disabled={remove.isPending}
-              >
-                {remove.isPending ? (
-                  <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
-                ) : (
-                  <UserMinus className="size-4" aria-hidden="true" />
+            {friends.isError ? (
+              <p className="flex items-center gap-2 text-sm text-destructive" role="alert">
+                <CircleAlert className="size-4 shrink-0" aria-hidden="true" />
+                {describeError(friends.error, locale)}
+              </p>
+            ) : null}
+
+            {friends.isSuccess && list.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                {t(
+                  'У вас пока нет друзей. Добавить в друзья можно во время чата — по обоюдному согласию.',
                 )}
-                {t('Удалить')}
-              </Button>
-            </div>
-          </div>
-        ) : null}
-      </Dialog>
-    </Card>
+              </p>
+            ) : null}
+
+            {list.length > 0 ? (
+              <ul className="flex flex-col gap-2" aria-label={t('Список друзей')}>
+                {list.map((friend) => (
+                  <li
+                    key={friend.publicId}
+                    className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-background p-2"
+                  >
+                    <UserRound className="size-4 shrink-0 text-primary" aria-hidden="true" />
+
+                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      <code
+                        translate="no"
+                        className="truncate font-mono text-sm text-foreground"
+                        title={friend.publicId}
+                      >
+                        {formatPublicIdForDisplay(friend.publicId)}
+                      </code>
+                      <span className="text-xs text-muted-foreground">
+                        {t('Добавлен: {date}', {
+                          date: formatDateTime(friend.since, locale),
+                        })}
+                      </span>
+                    </div>
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => send.mutate(friend.publicId)}
+                      disabled={send.isPending || outgoingRequest !== null}
+                    >
+                      {send.isPending ? (
+                        <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
+                      ) : (
+                        <Send className="size-4" aria-hidden="true" />
+                      )}
+                      <span className="sr-only sm:not-sr-only">{t('Написать')}</span>
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setRemoving(friend)}
+                      aria-label={t('Удалить {id} из друзей', { id: friend.publicId })}
+                    >
+                      <UserMinus className="size-4" aria-hidden="true" />
+                      <span className="sr-only sm:not-sr-only">{t('Удалить')}</span>
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </CardContent>
+
+          <Dialog
+            open={removing !== null}
+            title={t('Удалить контакт?')}
+            description={t(
+              'Вы больше не увидите этот User ID в списке друзей. Если вы снова встретитесь в чате, сможете добавить друг друга заново.',
+            )}
+            onClose={() => setRemoving(null)}
+          >
+            {removing ? (
+              <div className="flex flex-col gap-3">
+                <code
+                  translate="no"
+                  className="w-fit rounded border border-border bg-muted px-2 py-1 font-mono text-sm"
+                >
+                  {formatPublicIdForDisplay(removing.publicId)}
+                </code>
+
+                {remove.isError ? (
+                  <p className="text-sm text-destructive" role="alert">
+                    {describeError(remove.error, locale)}
+                  </p>
+                ) : null}
+
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="ghost"
+                    onClick={() => setRemoving(null)}
+                    disabled={remove.isPending}
+                  >
+                    {t('Отмена')}
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={() => remove.mutate(removing.publicId)}
+                    disabled={remove.isPending}
+                  >
+                    {remove.isPending ? (
+                      <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
+                    ) : (
+                      <UserMinus className="size-4" aria-hidden="true" />
+                    )}
+                    {t('Удалить')}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+          </Dialog>
+        </Card>
+      ) : null}
+    </div>
   );
 }

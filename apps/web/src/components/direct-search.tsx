@@ -21,28 +21,66 @@ import { useTicker } from '@/lib/use-ticker';
 import { useAppStore } from '@/store/app-store';
 
 /**
- * Direct contact by User ID — one row under the identity block.
+ * Direct contact by User ID, in two pieces.
  *
- * This used to live on its own tab, which meant the second-most likely thing a new user
- * wants to do required knowing there was a tab for it. It is now the field the owner
- * asked for, directly under the ID they are meant to hand out
- * (docs/DECISIONS.md D22): "paste the ID of the person you want to talk to and press
- * find".
+ * The owner asked for the small lookup field to sit in the header, right of the ID the
+ * user is meant to hand out, and for the answer to it to appear below the header instead
+ * of widening the header (owner request 2026-11-15). So the form and the outcome are
+ * separate components: the header holds `DirectSearchField`, the page below holds
+ * `DirectSearchOutcome`, and `HomeScreen` keeps the submitted value between them.
  *
- * The flow is still deliberately two steps — look up, then send — because the first step
- * is the one that can fail for a reason the user can act on (the ID does not exist, or
- * the person disabled requests). Sending blind would leave them guessing.
+ * The flow is deliberately two steps — look up, then send — because the first step is the
+ * one that can fail for a reason the user can act on (the ID does not exist, or the person
+ * disabled requests). Sending blind would leave them guessing.
  *
  * Validation uses the *shared* schema, so the browser rejects a malformed ID before
  * spending a request on it, and the server applies exactly the same rule.
  */
-export function DirectSearch() {
+export function DirectSearchField({ onSubmit }: { onSubmit: (publicId: string) => void }) {
+  const { t } = useI18n();
+  const [input, setInput] = useState('');
+
+  return (
+    <form
+      className="flex items-center gap-1.5"
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSubmit(input.trim());
+      }}
+    >
+      <label className="sr-only" htmlFor="target-user-id">
+        {t('User ID собеседника')}
+      </label>
+      <Input
+        id="target-user-id"
+        value={input}
+        onChange={(event) => setInput(event.target.value)}
+        placeholder={t('Вставьте сюда ID собеседника')}
+        autoComplete="off"
+        spellCheck={false}
+        className="h-8 w-[12rem] font-mono text-xs"
+        maxLength={32}
+      />
+      <Button type="submit" size="sm" disabled={input.trim().length === 0}>
+        <Search className="size-3.5" aria-hidden="true" />
+        {t('Найти')}
+      </Button>
+    </form>
+  );
+}
+
+/**
+ * The answer to a lookup, and the state of an outgoing request.
+ *
+ * Rendered under the header rather than beside the field: a "found / not found / requests
+ * disabled" panel is several lines tall and would push the header apart on every lookup.
+ * Nothing is rendered until there is something to say — a lookup that was never started
+ * and no pending invitation produce no box at all.
+ */
+export function DirectSearchOutcome({ submitted }: { submitted: string | null }) {
   const { locale, t } = useI18n();
   const ownPublicId = useAppStore((state) => state.session?.publicId ?? null);
   const outgoingRequest = useAppStore((state) => state.outgoingRequest);
-
-  const [input, setInput] = useState('');
-  const [submitted, setSubmitted] = useState<string | null>(null);
 
   const normalized = submitted ? normalizePublicId(submitted) : '';
   const formatValid = submitted !== null && isValidPublicId(normalized);
@@ -65,34 +103,10 @@ export function DirectSearch() {
 
   const notFound = lookup.isSuccess && !lookup.data.exists;
 
+  if (submitted === null && !outgoingRequest) return null;
+
   return (
     <section className="flex flex-col gap-2" aria-label={t('Чат по User ID')}>
-      <form
-        className="flex gap-2"
-        onSubmit={(event) => {
-          event.preventDefault();
-          setSubmitted(input.trim());
-        }}
-      >
-        <label className="sr-only" htmlFor="target-user-id">
-          {t('User ID собеседника')}
-        </label>
-        <Input
-          id="target-user-id"
-          value={input}
-          onChange={(event) => setInput(event.target.value)}
-          placeholder={t('Вставьте сюда ID собеседника')}
-          autoComplete="off"
-          spellCheck={false}
-          className="font-mono"
-          maxLength={32}
-        />
-        <Button type="submit" disabled={input.trim().length === 0}>
-          <Search className="size-4" aria-hidden="true" />
-          {t('Найти')}
-        </Button>
-      </form>
-
       {/* --- format feedback ------------------------------------------------ */}
       {submitted !== null && !formatValid ? (
         <p className="flex items-center gap-2 text-sm text-destructive" role="alert">

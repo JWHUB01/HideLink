@@ -43,15 +43,22 @@ export const TEST_API_PREFIX = '/api/v1';
 export const TEST_API_BASE = `${TEST_API_URL}${TEST_API_PREFIX}`;
 
 /**
- * The development database URL with `_test` appended to the database name.
+ * The test database URL.
  *
- * Derived rather than hard-coded so there is still exactly one place that says where
- * PostgreSQL lives. The suite runs migrations and writes rows, so it must never point
- * at the development database by accident.
+ * `TEST_DATABASE_URL`, when set, names the whole database — a machine may develop against
+ * a remote PostgreSQL (Neon, a shared staging server) and still run the suite locally,
+ * because the tests migrate the database and write rows and a server on another continent
+ * times out on the migration's advisory lock. Otherwise the development URL with `_test`
+ * appended is derived, so there is still exactly one place that says where PostgreSQL
+ * lives. Either way the suite must never point at the development database by accident,
+ * and the global setup refuses a URL that does not name a `*_test` database.
  */
 export function resolveTestDatabaseUrl(): string {
   const envFile = findEnvFile();
   if (envFile) loadDotenv({ path: envFile, quiet: true });
+
+  const explicit = process.env.TEST_DATABASE_URL;
+  if (explicit) return explicit;
 
   const base = process.env.DATABASE_URL;
   if (!base) {

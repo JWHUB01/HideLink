@@ -148,9 +148,14 @@ export async function expectMessage(page: Page, text: string): Promise<void> {
   await expect(transcript(page)).toContainText(text, { timeout: 20_000 });
 }
 
-/** The disclosure that reveals the filters. */
+/**
+ * The disclosure that reveals the filters.
+ *
+ * Since 2026-11-15 the whole filter summary is the button (owner request), so its
+ * accessible name is the section label rather than the old "Настройки" caption.
+ */
 export function settingsToggle(page: Page) {
-  return page.getByRole('button', { name: 'Настройки', exact: true });
+  return page.getByRole('button', { name: 'Фильтры поиска', exact: true });
 }
 
 /**
@@ -171,6 +176,22 @@ export async function closeSettings(page: Page): Promise<void> {
   const toggle = settingsToggle(page);
   if ((await toggle.getAttribute('aria-expanded')) === 'true') await toggle.click();
   await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+}
+
+/**
+ * Opens one of the two contact panels.
+ *
+ * Both start collapsed (owner request 2026-11-15): the friend list and the block list are
+ * opened on purpose, and the space they free stays reserved for advertising. Idempotent,
+ * like `openSettings` — a test that "opens" an already-open panel would close it.
+ */
+export async function openContactsPanel(
+  page: Page,
+  panel: 'Друзья' | 'Заблокированные',
+): Promise<void> {
+  const toggle = page.getByRole('button', { name: new RegExp(`^${panel}`) });
+  if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
 }
 
 /** Looks a User ID up: fill the field under the header, press "Найти". */

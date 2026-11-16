@@ -1,6 +1,6 @@
 'use client';
 
-import { LoaderCircle, Search, Settings2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, LoaderCircle, Search } from 'lucide-react';
 import { useState } from 'react';
 
 import { AdSlot } from '@/components/ad-slot';
@@ -163,27 +163,32 @@ export function SearchPanel({ session }: { session: SessionInfo | null }) {
             )}
           </Button>
 
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-3 py-2">
-            <div className="flex min-w-0 flex-col">
-              <span className="section-label">{t('Фильтры поиска')}</span>
-              <span className="truncate text-sm">
-                {saved.length === 0
-                  ? t('Без фильтров — подойдёт любой собеседник.')
-                  : saved.join(' · ')}
-              </span>
-            </div>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setSettingsOpen((open) => !open)}
-              aria-expanded={settingsOpen}
-              aria-controls="settings-panel"
-            >
-              <Settings2 className="size-4" aria-hidden="true" />
-              {t('Настройки')}
-            </Button>
-          </div>
+          {/*
+            The whole summary is the control (owner request 2026-11-15): one compact
+            button that opens the filter panel, instead of a row plus a separate
+            "Настройки" button. Everything sits on a single line, so the block is as short
+            as a button; a long criteria list is truncated rather than wrapped.
+          */}
+          <button
+            type="button"
+            onClick={() => setSettingsOpen((open) => !open)}
+            aria-expanded={settingsOpen}
+            aria-controls="settings-panel"
+            aria-label={t('Фильтры поиска')}
+            className="flex w-fit max-w-full flex-nowrap items-center gap-2 self-start rounded-lg border border-border px-3 py-1.5 text-left transition-colors hover:bg-muted"
+          >
+            <span className="section-label shrink-0">{t('Фильтры поиска')}</span>
+            <span className="max-w-[24rem] truncate text-xs text-muted-foreground">
+              {saved.length > 0
+                ? saved.join(' · ')
+                : t('Нажмите чтобы выбрать параметры собеседника')}
+            </span>
+            {settingsOpen ? (
+              <ChevronUp className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+            ) : (
+              <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+            )}
+          </button>
         </CardContent>
       </Card>
 

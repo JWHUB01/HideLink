@@ -21,29 +21,36 @@ Run from the repository root. Each command is the one a reviewer should trust.
 so `turbo run test` cannot drag the whole browser suite into a unit-test run (this was a real trap:
 the E2E package used to answer to `test`).
 
+A machine that develops against a remote PostgreSQL (Neon, a shared staging server) can point both
+suites at a local one with `TEST_DATABASE_URL`; without it the test URL is derived from `DATABASE_URL`
+by appending `_test`. Either way a database whose name does not end in `_test` is refused, because
+the suites migrate it and write rows.
+
 ## 2. Test inventory (last full run)
 
 | Suite | Files | Tests | Kind |
 | --- | --- | --- | --- |
-| `packages/shared` | 6 | **100** | pure unit |
+| `packages/shared` | 7 | **116** | pure unit |
 | `packages/protocol` | 1 | **8** | pure unit |
-| `apps/api` | 18 | **196** | 36 unit + 160 integration |
-| `tests/e2e` | 14 | **38** | browser, two independent contexts |
-| **Total** | **39** | **342** | |
+| `apps/api` | 19 | **205** | 36 unit + 169 integration |
+| `tests/e2e` | 14 | **40** | browser, two independent contexts |
+| **Total** | **41** | **369** | |
 
 `apps/api` unit files (`test/unit/chat-views.test.ts` 17, `test/unit/rate-limit.test.ts` 10,
-`test/unit/platform.test.ts` 4, `test/friend-requests.test.ts` 5) run without a server; the fourteen
+`test/unit/platform.test.ts` 4, `test/friend-requests.test.ts` 5) run without a server; the fifteen
 integration files start a **real API process on port 3101** against the `*_test` database.
 
-**Last full run (2026-10-23, this machine).** `pnpm lint`, `pnpm format:check`, `pnpm typecheck`,
-`pnpm test` and `pnpm build` all exit 0; `pnpm test:e2e` reports `38 passed`. The browser suite
+**Last full run (2026-11-15, this machine).** `pnpm lint`, `pnpm format:check`, `pnpm typecheck`,
+`pnpm test` and `pnpm build` all exit 0; `pnpm test:e2e` reports `40 passed`. The browser suite
 is not decoration — an earlier run failed on `filters.spec.ts` and exposed a real defect, described
 under §5, and the owner-directory run caught a test that used a button's visible text where an
-`aria-label` supplied the accessible name.
+`aria-label` supplied the accessible name. The attachment journeys were added after the previous
+recorded run, and the one defect they exposed was in the spec itself: it demanded a clean console
+while deliberately provoking the server's 415, which Chromium reports whatever the page does.
 
 ## 3. Unit suites
 
-**`packages/shared` (97)** — the rules both ends depend on, so they are tested once, here:
+**`packages/shared` (116)** — the rules both ends depend on, so they are tested once, here:
 
 - `languages.test.ts` (3) — the generated vocabulary has a name in every language, no duplicate
   codes or native names, and a widened code (`ja`) is accepted while an unknown one (`xx`) is not.
@@ -68,6 +75,12 @@ under §5, and the owner-directory run caught a test that used a button's visibl
   requires something to store; `criteria` requires at least one criterion; `selected` requires at
   least one ID; `ageMin ≤ ageMax`), `archiveSubjectMatches` treating an undeclared attribute as no
   match, and `shouldArchiveChat` selecting the whole chat when either participant matches.
+- `media.test.ts` (16) — the attachment rules: `normalizeMediaMimeType` drops parameters and folds
+  the aliases real file managers produce (`image/jpg`, `audio/x-wav`, `audio/ogg; codecs=opus`), the
+  per-kind policy accepts only known containers and offers a picker filter that matches it, recordings
+  are capped while still images are not, and the message and upload schemas accept an attachment with
+  or without a caption while refusing an empty message, a non-UUID media id, a duration on an image
+  and a voice message without one.
 
 **`packages/protocol` (8)** — `PROTOCOL_VERSION` and the exact client/server event-name maps, so a
 renamed event cannot silently ship.
@@ -97,6 +110,7 @@ Each file below runs against the live process; the descriptions are the guarante
 | `platform.test.ts` | 5 | Blocking is readable and writable only with the owner key; the session view reports the platform value to every user; switching it off refuses a new block with `BLOCKING_DISABLED` (409) while leaving old blocks listed and removable, and switching it on allows blocks again; both AI permissions are stored independently of blocking and re-read from the server; the body must carry exactly the three booleans, so a partial or extra field is rejected. Every test restores the policy it found |
 | `persistence.test.ts` | 8 | Chat start/end persisted with no message content, no text column on `ChatSession`, exactly one copy of the reported message, only a token hash stored, identity kept on ID rotation, no contact columns, durable block, coarse security events; it also refuses to run against a database that is not `*_test` or whose archive is not empty, so its "nothing is stored" claims describe a default installation |
 | `search-filters.test.ts` | 12 | Filters really steer *server* matching (exclude then match the compatible peer), undeclared never satisfies, age-from-birthYear, place folding, a named city or region (an **or**), a declared country code, shared-language, **no widening while the timing policy is off**; inverted range rejected without touching saved filters, age floor/unknown language/unknown country/unknown fields rejected, profile round-trip (including country) never exposed to another user; multi-place round-trip |
+| `media.test.ts` | 9 | Attachments are private to one chat: an upload is published as a message and served to both participants, a caption and a voice message's duration survive, and **the bytes decide the type** — a file whose content contradicts its declared kind is refused, as is a voice message without a duration; an outsider cannot read, upload or attach, and one upload cannot be attached twice or into another chat; a retried message stays one message with its attachment; an empty body and an oversized upload are refused; an identity is required to upload or download |
 | `archive.test.ts` | 13 | The owner surface is closed without the key (401 `ADMIN_AUTH_REQUIRED`), the key exchanges for an `HttpOnly`+`SameSite=Strict` cookie, `/admin/status` answers without a key, identity search by full ID and prefix, **nothing is stored while the switch is off**, a chat covered by `everyone` is stored in order with senders and an expiry, switching the switch off mid-conversation stops recording, `criteria` archives a declared person and not one who declared nothing, `selected` archives exactly the chosen IDs, an unknown ID in the selected list is refused without half-applying, deleting one transcript, deleting by expiry (the same query the sweep runs), and `delete-all` needing an explicit confirmation |
 | `protocol.test.ts` | 12 | The eleven client events are declared and each is routed to a handler |
 | `owner-messages.test.ts` | 7 | "Связаться с администрацией": the text, topic and sender (taken from the session, never the body) are stored with an expiry; unknown topic, empty/over-long text and unknown fields are refused; a session is required; the sixth message of the day from one identity is rate-limited; the inbox is readable and deletable only with the owner key, and deletion is idempotent |

@@ -224,7 +224,9 @@ test.describe('filtered search', () => {
     await saveFilters(alice.page);
     await closeSettings(alice.page);
 
-    await expect(alice.page.getByText('Без фильтров — подойдёт любой собеседник.')).toBeVisible();
+    // The collapsed summary no longer claims "no filters": it invites the user to choose
+    // them, and the cleared state is proved by the four absences below.
+    await expect(alice.page.getByText('Нажмите чтобы выбрать параметры собеседника')).toBeVisible();
     await expect(alice.page.getByText('Пол: Женский')).toHaveCount(0);
     await expect(alice.page.getByText('Страны: Deutschland')).toHaveCount(0);
     await expect(alice.page.getByText('Города: Москва, Казань')).toHaveCount(0);

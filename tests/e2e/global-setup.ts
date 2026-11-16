@@ -28,6 +28,7 @@ import process from 'node:process';
 import {
   E2E_API_BASE,
   E2E_API_PORT,
+  E2E_DATABASE_URL,
   E2E_PATHS,
   E2E_WEB_ORIGIN,
   E2E_WEB_PORT,
@@ -40,6 +41,14 @@ import { setBlockingPolicy } from './support/owner';
 
 export default async function globalSetup(): Promise<void> {
   console.log('[e2e] preparing the stack (web 3200, api 3201)');
+
+  // `TEST_DATABASE_URL` may name any server; the suite migrates and writes rows, so a
+  // database whose name does not end in `_test` is refused rather than trusted.
+  if (!E2E_DATABASE_URL.endsWith('_test') && !E2E_DATABASE_URL.includes('_test?')) {
+    throw new Error(
+      `Refusing to run the browser suite against "${E2E_DATABASE_URL}": expected a *_test database.`,
+    );
+  }
 
   stopStaleStack();
 

@@ -175,13 +175,17 @@ test.describe('chat attachments', () => {
     expectNoClientErrors(bob);
   });
 
-  test('a file that is not an image is rejected before upload', async ({ browser }) => {
+  test('a file whose bytes are not an image is refused, and nothing reaches the peer', async ({
+    browser,
+  }) => {
     const alice = await newIdentity(browser);
     const bob = await newIdentity(browser);
     await matchPair(alice, bob);
 
     // The picker filters by type, but a file manager can still hand over something the
-    // server will not accept. The server's answer has to be shown, not swallowed.
+    // server will not accept: the declared MIME type says `image/png` while the bytes do
+    // not. The server sniffs the container and refuses it (D40, point 4), and its answer
+    // has to be shown rather than swallowed.
     await chooseFile(alice.page, 'Прикрепить фото', {
       name: 'fake.png',
       mimeType: 'image/png',
@@ -191,7 +195,13 @@ test.describe('chat attachments', () => {
     await expect(alice.page.getByRole('alert').filter({ hasText: 'формат' })).toBeVisible();
     await expect(transcript(bob.page).getByRole('img', { name: 'Изображение' })).toHaveCount(0);
 
-    expectNoClientErrors(alice);
+    // A refusal is a failed HTTP response, and Chromium reports every failed response in
+    // the console whether the page handled it or not. So the honest assertion is that this
+    // is the *only* thing the page complains about: no React warning, no unhandled
+    // rejection, and no error the interface failed to explain.
+    expect(alice.errors, `console output of ${alice.publicId}`).toEqual([
+      expect.stringContaining('415'),
+    ]);
     expectNoClientErrors(bob);
   });
 });

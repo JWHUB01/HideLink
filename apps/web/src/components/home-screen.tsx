@@ -9,7 +9,7 @@ import { BlockedPanel } from '@/components/blocked-panel';
 import { ChatPanel } from '@/components/chat-panel';
 import { ConnectionBadge } from '@/components/connection-badge';
 import { ContactOwnerDialog } from '@/components/contact-owner-dialog';
-import { DirectSearch } from '@/components/direct-search';
+import { DirectSearchField, DirectSearchOutcome } from '@/components/direct-search';
 import { FriendsPanel } from '@/components/friends-panel';
 import { IdentityStrip } from '@/components/identity-strip';
 import { IncomingFriendRequestDialog } from '@/components/incoming-friend-request-dialog';
@@ -54,6 +54,13 @@ export function HomeScreen() {
   const [contacting, setContacting] = useState(false);
   const [retrying, setRetrying] = useState(false);
 
+  /*
+    The ID the user asked to look up. It lives here because the field sits in the header
+    (beside the own ID) while the answer belongs under it — two components, one value
+    (owner request 2026-11-15).
+  */
+  const [lookupId, setLookupId] = useState<string | null>(null);
+
   const inChat = phase === 'chatting' || phase === 'ended';
   const reachable =
     connection === 'connected' || connection === 'connecting' || connection === 'reconnecting';
@@ -78,7 +85,7 @@ export function HomeScreen() {
 
       <div className="mx-auto flex min-h-dvh w-full max-w-[900px] min-w-0 flex-col gap-3 py-3 sm:py-4">
         <header className="flex flex-wrap items-center justify-between gap-x-5 gap-y-2 border-b border-border pb-3">
-          <div className="flex min-w-0 flex-wrap items-center gap-x-6 gap-y-2">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-5 gap-y-2">
             <div className="flex items-center gap-2">
               <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                 <MessageSquare className="size-4" aria-hidden="true" />
@@ -86,10 +93,28 @@ export function HomeScreen() {
               <h1 className="text-lg leading-none font-semibold">AnonLink</h1>
             </div>
 
-            {session ? <IdentityStrip session={session} /> : <IdentitySkeleton />}
+            {/*
+              The lookup field rides on the identity's own row, right of the ID it searches
+              for, and stays compact: the answer renders below the header. It is hidden while
+              a chat or a search is running, when the server would refuse the invitation
+              anyway (owner request 2026-11-15).
+            */}
+            {session ? (
+              <IdentityStrip
+                session={session}
+                trailing={phase === 'idle' ? <DirectSearchField onSubmit={setLookupId} /> : null}
+              />
+            ) : (
+              <IdentitySkeleton />
+            )}
           </div>
 
-          <div className="flex items-center gap-2">
+          {/*
+            `shrink-0` plus `flex-1` on the group above: the connection, language and theme
+            controls keep their place at the top right; when the header runs out of room it
+            is the left group that wraps, not these controls (owner request 2026-11-15).
+          */}
+          <div className="flex shrink-0 items-center gap-2">
             <ConnectionBadge />
             <LanguageToggle />
             <ThemeToggle />
@@ -127,7 +152,7 @@ export function HomeScreen() {
                 (the server refuses it), and while a search is in progress the field would
                 be a control that cannot be used.
               */}
-              {phase === 'idle' ? <DirectSearch /> : null}
+              {phase === 'idle' ? <DirectSearchOutcome submitted={lookupId} /> : null}
 
               {inChat && chat ? (
                 <ChatPanel

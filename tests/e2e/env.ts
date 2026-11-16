@@ -61,6 +61,12 @@ export const E2E_WEB_ORIGIN = `http://localhost:${E2E_WEB_PORT}`;
  * Playwright-compiled package for eight lines of string manipulation.
  */
 function resolveE2eDatabaseUrl(): string {
+  // The same override the API suite honours: `TEST_DATABASE_URL` names the complete test
+  // database, so a developer whose `.env` points at a remote server can still run the
+  // browser suite against a local PostgreSQL.
+  const explicit = process.env['TEST_DATABASE_URL'];
+  if (explicit) return explicit;
+
   const base = process.env['DATABASE_URL'];
   if (!base) {
     throw new Error(

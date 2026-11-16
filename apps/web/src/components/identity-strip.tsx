@@ -2,7 +2,7 @@
 
 import { formatPublicIdForDisplay } from '@anonlink/shared';
 import { Check, Copy, RefreshCw, ShieldCheck } from 'lucide-react';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
@@ -27,7 +27,14 @@ import { useAppStore, type SessionInfo } from '@/store/app-store';
  * settings, where the consequences live — and the copy hint next to the heading states
  * what the ID is *for* (showing it to someone) rather than what it is not.
  */
-export function IdentityStrip({ session }: { session: SessionInfo }) {
+export function IdentityStrip({
+  session,
+  trailing,
+}: {
+  session: SessionInfo;
+  /** Rendered on the ID's own row, to its right: the "find by User ID" field. */
+  trailing?: ReactNode;
+}) {
   const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   const [confirmingRotate, setConfirmingRotate] = useState(false);
@@ -75,7 +82,7 @@ export function IdentityStrip({ session }: { session: SessionInfo }) {
         </span>
       </div>
 
-      <div className="flex items-center gap-1">
+      <div className="flex flex-wrap items-center gap-x-1 gap-y-2">
         {/*
           The ID itself is the copy button: one target instead of a value and a control
           that does the same thing. `#own-user-id` is the end-to-end suite's hook and must
@@ -103,6 +110,8 @@ export function IdentityStrip({ session }: { session: SessionInfo }) {
         >
           <RefreshCw className="size-3.5" aria-hidden="true" />
         </button>
+
+        {trailing}
       </div>
 
       <Dialog

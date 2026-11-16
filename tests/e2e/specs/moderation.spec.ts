@@ -8,6 +8,7 @@ import {
   expectMessage,
   matchPair,
   newIdentity,
+  openContactsPanel,
   openSettings,
   searchButton,
   sendMessage,
@@ -174,6 +175,11 @@ test.describe('moderation panel', () => {
 
       await blocker.page.getByRole('button', { name: 'Готово', exact: true }).click();
 
+      // Both lists start collapsed (owner request 2026-11-15): they are opened on purpose
+      // so the space under the search card can be sold.
+      await openContactsPanel(blocker.page, 'Друзья');
+      await openContactsPanel(blocker.page, 'Заблокированные');
+
       const friendsHeading = blocker.page.getByRole('heading', { name: /^Друзья/ });
       const blockedHeading = blocker.page.getByRole('heading', { name: /^Заблокированные/ });
       await expect(friendsHeading).toBeVisible();
@@ -201,6 +207,9 @@ test.describe('moderation panel', () => {
       await setBlockingPolicy(false);
       await blocker.page.reload();
       await expect(connectionStatus(blocker.page)).toHaveText('На связи', { timeout: 30_000 });
+
+      // A reload collapses the panels again, so the list has to be reopened.
+      await openContactsPanel(blocker.page, 'Заблокированные');
       await expect(blockedList.getByTitle(peer.publicId)).toBeVisible();
 
       await openSettings(blocker.page);

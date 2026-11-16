@@ -1,6 +1,12 @@
 import { expect, test } from '@playwright/test';
 
-import { expectNoClientErrors, matchPair, newIdentity, waitForChat } from '../support/app';
+import {
+  expectNoClientErrors,
+  matchPair,
+  newIdentity,
+  openContactsPanel,
+  waitForChat,
+} from '../support/app';
 
 /**
  * Friends are the one persistent link a random chat can produce.
@@ -32,6 +38,10 @@ test.describe('friends', () => {
     await alice.page.getByRole('button', { name: 'Готово', exact: true }).click();
     await bob.page.getByRole('button', { name: 'Готово', exact: true }).click();
 
+    // Both contact lists start collapsed (owner request 2026-11-15).
+    await openContactsPanel(alice.page, 'Друзья');
+    await openContactsPanel(bob.page, 'Друзья');
+
     const aliceFriends = alice.page.getByRole('list', { name: 'Список друзей' });
     const bobFriends = bob.page.getByRole('list', { name: 'Список друзей' });
 
@@ -52,6 +62,11 @@ test.describe('friends', () => {
     await bob.page.getByRole('button', { name: 'Завершить', exact: true }).click();
     await alice.page.getByRole('button', { name: 'Готово', exact: true }).click();
     await bob.page.getByRole('button', { name: 'Готово', exact: true }).click();
+
+    // A chat unmounts the idle screen, so the panels come back collapsed — reopen both
+    // before acting on the list (owner request 2026-11-15).
+    await openContactsPanel(alice.page, 'Друзья');
+    await openContactsPanel(bob.page, 'Друзья');
 
     // Removing is immediate and one-sided. The other tab must not keep a contact that
     // the server has already deleted.
