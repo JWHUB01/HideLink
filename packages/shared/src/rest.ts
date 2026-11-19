@@ -60,6 +60,23 @@ export interface CurrentSessionView {
 }
 
 /**
+ * A session issued to an embedded widget.
+ *
+ * The widget runs in an iframe on somebody else's page, where the `HttpOnly`
+ * session cookie of the main application is not sent (third-party cookie policy).
+ * The embed therefore carries its credential explicitly: the token is returned
+ * once here and kept in `sessionStorage` of the widget's own frame, and every
+ * REST call and the socket handshake present it as `Authorization: Bearer …`.
+ *
+ * The token is the same opaque secret the cookie holds — it is only the
+ * transport that differs.
+ */
+export interface EmbedSessionView {
+  session: SessionView;
+  token: string;
+}
+
+/**
  * The result of looking a User ID up.
  *
  * Note what is absent: nothing about activity, ban state or account age. Returning

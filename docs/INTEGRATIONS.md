@@ -1,8 +1,9 @@
 # Social-network integrations
 
-**Status: not implemented.** This document is the design constraint that keeps VK, Telegram and any
-future host from requiring a fork of the chat. It is a checklist for the first integration, not a
-claim that one exists. The decision behind it is `docs/DECISIONS.md` D35.
+**Status: the generic embed transport is implemented; platform-specific integrations are not.** Any
+page can frame `/embed` without cookies (`docs/EMBED.md`). What remains unbuilt is *platform identity
+linking* — verifying a VK/Telegram launch proof and attaching the platform account to a chat identity.
+This document is the design constraint for that step, and `docs/DECISIONS.md` D35 still governs it.
 
 The product is an anonymous chat with a REST bootstrap, an authenticated Socket.IO session and an
 optional owner panel. VK Mini Apps and Telegram Mini Apps are webviews/mini-apps; a Telegram bot or a
@@ -37,18 +38,19 @@ thin adapter in `apps/web/src/integrations/<provider>/` may:
 It may **not** call Prisma, decide who a user is, or send messages without going through the normal
 client commands.
 
-If the host embeds the app as a third-party iframe where cookies are blocked, that needs a separate
-token-bootstrap mode:
+If the host embeds the app as a third-party iframe where cookies are blocked, a token-bootstrap mode
+is needed. The generic transport now exists: `POST /api/v1/session/embed` issues the same opaque
+anonymous session token, the widget keeps it in its frame's `sessionStorage`, the guard reads
+`Authorization: Bearer …` and the socket handshake reads `auth.token`. The HttpOnly cookie remains the
+default for the standalone site; nothing is disabled globally (see `docs/EMBED.md`).
+
+What this mode is **not**: it does not verify a platform launch proof and does not link a platform
+account — every frame mints its own anonymous identity. Platform identity linking still needs:
 
 1. The adapter sends the platform proof to a new `POST /api/v1/integrations/<provider>/session`.
-2. The server verifies the proof, resolves or creates the linked identity, and issues a **short-lived**
-   access token.
-3. The browser sends that token in an `Authorization` header and in the Socket.IO handshake `auth`
-   payload; the guard and socket adapter must both accept it. The existing HttpOnly cookie stays the
-   default for the standalone site.
+2. The server verifies the proof and resolves or creates the **linked** identity.
+3. Short-lived tokens, refresh/rotation and revocation across devices are decided per provider.
 
-This mode is deliberately **not** built. Turning it on requires a decision about token storage in the
-browser (memory vs. storage), refresh/rotation, revocation, and the effect on the anonymity promise.
 Disabling `HttpOnly`/`SameSite` globally to make an iframe work is rejected in D35.
 
 ### B. Server-side bot / community adapter

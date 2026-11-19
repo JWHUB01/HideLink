@@ -184,7 +184,14 @@ export class ChatGateway implements OnModuleInit, OnModuleDestroy {
   private async authenticate(socket: AnonLinkSocket): Promise<boolean> {
     try {
       const cookies = parseCookieHeader(socket.handshake.headers.cookie);
-      const identity = await this.identityService.identify(cookies[SESSION_COOKIE_NAME]);
+      // The embed cannot rely on the cookie (third-party storage in an iframe), so it
+      // presents the same opaque token in the handshake's `auth` payload. The explicit
+      // token wins when both are present, mirroring `RequestGuard`.
+      const auth = socket.handshake.auth as { token?: unknown } | undefined;
+      const presented = typeof auth?.token === 'string' ? auth.token : null;
+      const identity = await this.identityService.identify(
+        presented ?? cookies[SESSION_COOKIE_NAME],
+      );
 
       if (!identity) {
         this.reject(socket, ErrorCode.IDENTITY_REQUIRED);

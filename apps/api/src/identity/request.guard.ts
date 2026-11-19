@@ -5,6 +5,7 @@ import type { Request } from 'express';
 
 import { APP_CONFIG, type AppConfig } from '../config/env.js';
 import { AppError } from '../common/app-error.js';
+import { parseBearerToken } from '../common/bearer.js';
 import { SESSION_COOKIE_NAME, clientAddress, parseCookieHeader } from '../common/cookies.js';
 import { isOriginAllowed } from '../common/origin.js';
 import { RateLimitService } from '../common/rate-limit.service.js';
@@ -48,8 +49,14 @@ export class RequestGuard implements CanActivate {
     }
 
     // 2. Identity resolution.
+    //
+    // The embed presents the same opaque token as `Authorization: Bearer …`, because
+    // the session cookie is a third-party cookie inside somebody else's iframe and
+    // browsers refuse to send it. The explicit header wins when both are present: a
+    // widget frame has no business inheriting the first-party cookie of the page.
     const cookies = parseCookieHeader(request.headers.cookie);
-    const identity = await this.identityService.identify(cookies[SESSION_COOKIE_NAME]);
+    const token = parseBearerToken(request.headers.authorization) ?? cookies[SESSION_COOKIE_NAME];
+    const identity = await this.identityService.identify(token);
 
     if (identity) {
       if (identity.banned) throw new AppError(ErrorCode.IDENTITY_BANNED);

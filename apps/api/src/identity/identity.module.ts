@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { DirectoryModule } from '../directory/directory.module.js';
+import { EmbedSessionController } from './embed.controller.js';
 import { IdentityController, UsersController } from './identity.controller.js';
 import { IdentityService } from './identity.service.js';
 import { RequestGuard } from './request.guard.js';
@@ -18,7 +19,7 @@ import { RequestGuard } from './request.guard.js';
  */
 @Module({
   imports: [DirectoryModule],
-  controllers: [IdentityController, UsersController],
+  controllers: [IdentityController, EmbedSessionController, UsersController],
   providers: [IdentityService, RequestGuard],
   exports: [IdentityService, RequestGuard],
 })

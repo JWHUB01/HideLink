@@ -33,7 +33,7 @@ import { zodBody, zodParam } from '../common/zod-validation.pipe.js';
 import { DirectoryService } from '../directory/directory.service.js';
 import { PlatformService } from '../platform/platform.service.js';
 import { IdentityService, type AuthenticatedIdentity } from './identity.service.js';
-import { Anonymous, CurrentIdentity } from './request-context.js';
+import { Anonymous, CurrentIdentity, type RequestWithIdentity } from './request-context.js';
 
 /**
  * Identity and session endpoints.
@@ -87,9 +87,11 @@ export class IdentityController {
   /** Reports whether the caller already has an identity, without creating one. */
   @Get()
   @Anonymous()
-  async current(@Req() request: Request): Promise<CurrentSessionView> {
-    const cookies = parseCookieHeader(request.headers.cookie);
-    const identity = await this.identityService.identify(cookies[SESSION_COOKIE_NAME]);
+  async current(@Req() request: RequestWithIdentity): Promise<CurrentSessionView> {
+    // The guard already resolved whichever credential was presented — the session
+    // cookie or the embed's `Authorization: Bearer …`. Re-reading only the cookie here
+    // would make the endpoint blind to the widget, which has no cookie at all.
+    const identity = request.identity;
     return identity
       ? { authenticated: true, session: this.toView(identity) }
       : { authenticated: false, session: null };

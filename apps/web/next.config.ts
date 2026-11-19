@@ -76,7 +76,8 @@ const nextConfig: NextConfig = {
         headers: [
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'no-referrer' },
-          { key: 'X-Frame-Options', value: 'DENY' },
+          // Framing is decided per route in `src/proxy.ts`: `/embed` is the only page
+          // that may be framed, and it uses `frame-ancestors` instead of this header.
         ],
       },
     ];

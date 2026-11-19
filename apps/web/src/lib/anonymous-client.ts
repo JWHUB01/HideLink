@@ -2,6 +2,7 @@ import {
   ErrorCode,
   type ChatMediaKind,
   type ChatMediaView,
+  type EmbedSessionView,
   type ReportReason,
   type SessionView,
 } from '@anonlink/shared';
@@ -29,6 +30,7 @@ import {
 import { io, type Socket } from 'socket.io-client';
 
 import { API_ORIGIN } from './config';
+import { isEmbedded, readEmbedToken, writeEmbedToken } from './embed';
 import { activeT, getActiveLocale } from '@/i18n';
 import { describeError, describeMatchCancel, describeRequestStatus } from './error-text';
 import { ApiError, apiRequest } from './http';
@@ -131,7 +133,11 @@ class AnonymousClient {
     try {
       // `POST /session` is idempotent: with a valid cookie it returns the existing
       // identity and consumes no rate limit, so this is safe on every page load.
-      const session = await apiRequest<SessionView>('/session', { method: 'POST' });
+      // The widget runs on somebody else's page, where that cookie is third-party
+      // storage the browser refuses to send, so it bootstraps over an explicit token.
+      const session = isEmbedded()
+        ? await this.bootstrapEmbed()
+        : await apiRequest<SessionView>('/session', { method: 'POST' });
 
       store.setSession(this.toSessionInfo(session));
       store.setBootError(null);
@@ -168,6 +174,25 @@ class AnonymousClient {
   }
 
   /**
+   * Creates or reuses the widget's session and keeps its bearer token.
+   *
+   * The token is written before anything else can run, so the very next REST call
+   * and the socket handshake already carry it.
+   */
+  private async bootstrapEmbed(): Promise<SessionView> {
+    const issued = await apiRequest<EmbedSessionView>('/session/embed', { method: 'POST' });
+    writeEmbedToken(issued.token);
+    return issued.session;
+  }
+
+  /** "Get a new User ID" for the widget: the server issues a fresh token. */
+  private async rotateEmbed(): Promise<SessionView> {
+    const issued = await apiRequest<EmbedSessionView>('/session/embed', { method: 'DELETE' });
+    writeEmbedToken(issued.token);
+    return issued.session;
+  }
+
+  /**
    * "Get a new User ID".
    *
    * Revolves every session of the current identity and adopts a brand-new one. The
@@ -178,7 +203,9 @@ class AnonymousClient {
     try {
       this.rotating = true;
 
-      const session = await apiRequest<SessionView>('/session', { method: 'DELETE' });
+      const session = isEmbedded()
+        ? await this.rotateEmbed()
+        : await apiRequest<SessionView>('/session', { method: 'DELETE' });
 
       // The conversation belonged to the previous identity; nothing about it may
       // survive into the new one.
@@ -453,9 +480,15 @@ class AnonymousClient {
   private openSocket(): void {
     this.closeSocket();
 
+    // In the embed the session is a bearer token, not a cookie: the handshake must
+    // present it explicitly. `withCredentials` stays on for the normal application,
+    // where the cookie is the only credential.
+    const token = readEmbedToken();
+
     const socket: AnonLinkSocket = io(API_ORIGIN, {
       // Required for the anonymous session cookie to be sent on the handshake.
       withCredentials: true,
+      ...(token ? { auth: { token } } : {}),
       autoConnect: false,
       // WebSocket first, with polling as the fallback for restrictive networks.
       transports: ['websocket', 'polling'],

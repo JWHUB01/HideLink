@@ -3,6 +3,7 @@ import { ErrorCode } from '@anonlink/shared';
 import { activeT } from '@/i18n';
 
 import { API_BASE } from './config';
+import { readEmbedToken } from './embed';
 
 /**
  * A failed API call.
@@ -110,11 +111,17 @@ async function apiFetch(path: string, options: FetchOptions): Promise<Response> 
     json !== undefined ? 'application/json' : requestBody === undefined ? undefined : contentType;
 
   try {
+    // The embed cannot send the session cookie (third-party storage inside somebody
+    // else's iframe), so it presents the same opaque token explicitly. Outside the
+    // embed there is no stored token and the cookie remains the only credential.
+    const embedToken = readEmbedToken();
+
     return await fetch(`${API_BASE}${path}`, {
       method,
       credentials: 'include',
       headers: {
         accept,
+        ...(embedToken ? { authorization: `Bearer ${embedToken}` } : {}),
         ...(requestContentType ? { 'content-type': requestContentType } : {}),
       },
       ...(requestBody === undefined ? {} : { body: requestBody }),
