@@ -14,6 +14,7 @@ import { FriendsModule } from './friends/friends.module.js';
 import { HealthModule } from './health/health.module.js';
 import { IdentityModule } from './identity/identity.module.js';
 import { RequestGuard } from './identity/request.guard.js';
+import { AiCompanionModule } from './integrations/ai/ai-companion.module.js';
 import { MaintenanceModule } from './maintenance/maintenance.module.js';
 import { ModerationModule } from './moderation/moderation.module.js';
 import { OwnerAdminModule } from './owner-admin/owner-admin.module.js';
@@ -48,6 +49,7 @@ import { RealtimeModule } from './realtime/realtime.module.js';
 
     // Features.
     IdentityModule,
+    AiCompanionModule,
     ModerationModule,
     ArchiveModule,
     BackgroundsModule,

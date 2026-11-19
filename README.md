@@ -275,6 +275,7 @@ docs              документация
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Этапы, что дальше, какие решения нужны от владельца |
 | [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md) | Как устроить VK/Telegram-адаптер, не ломая анонимность и серверные правила |
 | [docs/EMBED.md](docs/EMBED.md) | Встраивание виджета `/embed` в сайты и соцсети: сниппет, протокол, настройки |
+| [docs/AI_COMPANION.md](docs/AI_COMPANION.md) | ИИ-собеседник как запасной вариант: что готово и что осталось до включения |
 | [docs/COMPLIANCE.md](docs/COMPLIANCE.md) | Таблица соответствия требованиям со статусами |
 | [AGENTS.md](AGENTS.md) | Правила для разработки в этом репозитории |
 

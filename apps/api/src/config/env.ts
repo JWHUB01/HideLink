@@ -144,6 +144,37 @@ const envSchema = z.object({
     .min(32, 'ADMIN_TOKEN must be at least 32 characters when set')
     .optional()
     .transform((value) => (value && value.length > 0 ? value : undefined)),
+
+  // --- AI companion (seam only; no provider is wired) ------------------------
+  /**
+   * Which companion provider the server may address.
+   *
+   * `none` (the default) means the seam exists but no request can leave the process:
+   * the owner switch in `/admin` is stored, and nothing consumes it yet
+   * (docs/DECISIONS.md D38 §4). A future adapter adds its name to this enum and
+   * registers an implementation in `AiCompanionModule`; extending the enum without
+   * that implementation is a boot error, not a silent no-op.
+   */
+  AI_COMPANION_PROVIDER: z.enum(['none']).default('none'),
+  /** Base URL of an OpenAI-compatible endpoint. Unset means "not configured". */
+  AI_COMPANION_BASE_URL: z
+    .string()
+    .url('AI_COMPANION_BASE_URL must be an absolute URL when set')
+    .optional()
+    .transform((value) => (value && value.length > 0 ? value : undefined)),
+  /** Server-only credential. Never exposed through the web bundle or the protocol. */
+  AI_COMPANION_API_KEY: z
+    .string()
+    .min(1)
+    .optional()
+    .transform((value) => (value && value.length > 0 ? value : undefined)),
+  AI_COMPANION_MODEL: z
+    .string()
+    .min(1)
+    .optional()
+    .transform((value) => (value && value.length > 0 ? value : undefined)),
+  /** Hard ceiling for one provider call; a slow model must never hold a user in limbo. */
+  AI_COMPANION_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(60_000).default(12_000),
 });
 
 export type AppConfig = Readonly<
