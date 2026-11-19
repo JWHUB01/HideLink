@@ -27,8 +27,8 @@ import process from 'node:process';
 
 import { ENV_PATH, REPO_ROOT, compareVersions, parseMinimumVersion, readJson } from './lib/env.mjs';
 
-const WEB_URL = 'http://localhost:3000';
-const API_HEALTH_URL = 'http://127.0.0.1:3001/api/v1/health/ready';
+const WEB_URL = 'http://localhost:2100';
+const API_HEALTH_URL = 'http://127.0.0.1:2101/api/v1/health/ready';
 
 /**
  * Keeps the window open after an error.
@@ -112,7 +112,7 @@ if (await alreadyRunning()) {
 }
 
 // --- 4. Start ----------------------------------------------------------------
-console.log('\nЗапускаю API (:3001) и веб-интерфейс (:3000)…');
+console.log('\nЗапускаю API (:2101) и веб-интерфейс (:2100)…');
 console.log(`Когда увидите «Ready», откройте: ${WEB_URL}`);
 console.log('Остановить: Ctrl+C или закрыть это окно.\n');
 

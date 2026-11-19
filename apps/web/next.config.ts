@@ -55,7 +55,7 @@ const e2e = process.env['ANONLINK_E2E'] === '1';
 
 const apiUrl = e2e
   ? (process.env['ANONLINK_E2E_API_URL'] ?? 'http://localhost:3201')
-  : (process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001');
+  : (process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:2101');
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,

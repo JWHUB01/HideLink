@@ -393,8 +393,8 @@ async function probe(url) {
 async function checkServers() {
   section('4/5  Порты и запущенные серверы');
 
-  const apiPort = Number(process.env.API_PORT ?? 3001);
-  const webPort = Number(process.env.WEB_PORT ?? 3000);
+const apiPort = Number(process.env.API_PORT ?? 2101);
+const webPort = Number(process.env.WEB_PORT ?? 2100);
 
   // --- API -----------------------------------------------------------------
   if (await isPortFree(apiPort)) {
@@ -457,7 +457,7 @@ const warnings = results.filter((result) => result.status === 'warn');
 if (failures.length === 0 && warnings.length === 0) {
   console.log('  Всё в порядке.');
   console.log('\n  Запустить приложение:  pnpm dev');
-  console.log('  Открыть в браузере:    http://localhost:3000');
+  console.log('  Открыть в браузере:    http://localhost:2100');
 } else if (failures.length === 0) {
   console.log(`  Готово, но есть ${warnings.length} предупреждение(й) — см. выше.`);
   console.log('\n  Если сайт не открывается, выполните:  pnpm setup');

@@ -2,8 +2,12 @@
 
 import { useSyncExternalStore } from 'react';
 
+/** The dark-scheme variants a user can pick in the settings. */
+export type DarkShade = 'default' | 'green' | 'purple';
+
 /**
- * The interface theme: light, dark, or whatever the operating system says.
+ * The interface theme: light, dark, or whatever the operating system says — plus, for
+ * the dark scheme, an optional *shade* (green or purple) chosen in the settings.
  *
  * ## Why this is not React state
  *
@@ -13,19 +17,20 @@ import { useSyncExternalStore } from 'react';
  * `use-ticker.ts`, which also sidesteps the React 19 rule against writing state from an
  * effect body.
  *
- * ## Three states, two buttons
+ * ## What the header button does
  *
  * `null` means "nobody has chosen": the operating system decides, and it keeps deciding
  * if the user never touches the switch. Pressing the switch stores an explicit `light` or
  * `dark`, after which the system preference is ignored — a user who picked a theme does
- * not want it changed under them at sunset.
+ * not want it changed under them at sunset. The button never changes the shade; the shade
+ * only exists in the settings and only applies while the scheme is dark.
  *
  * ## Why the first paint is already correct
  *
  * `layout.tsx` runs a tiny inline script before the body renders, so the class is set
  * before anything is painted. Without it, a dark-theme user would see a flash of white on
- * every navigation. This module and that script must agree on the storage key and the
- * class name; both are defined here and the script only repeats the literal.
+ * every navigation. This module and that script must agree on the storage keys and the
+ * class names; both are defined here and the script only repeats the literal.
  */
 
 export type Theme = 'light' | 'dark';
@@ -33,13 +38,23 @@ export type Theme = 'light' | 'dark';
 /** Must match the key used by the inline script in `layout.tsx`. */
 export const THEME_STORAGE_KEY = 'anonlink.theme';
 
+/** Must match the key used by the inline script in `layout.tsx`. */
+export const DARK_SHADE_STORAGE_KEY = 'anonlink.dark-shade';
+
 /** Must match the class toggled by the inline script in `layout.tsx`. */
 export const DARK_CLASS = 'dark';
+
+export const DARK_SHADE_CLASSES: Record<DarkShade, string> = {
+  default: '',
+  green: 'dark-green',
+  purple: 'dark-purple',
+};
 
 const listeners = new Set<() => void>();
 
 /** `null` until resolved; also what tells us the store has been read at least once. */
 let cached: Theme | null = null;
+let cachedShade: DarkShade = 'default';
 let mediaQuery: MediaQueryList | null = null;
 
 function systemTheme(): Theme {
@@ -64,17 +79,40 @@ export function readStoredTheme(): Theme | null {
   }
 }
 
+/** The user's stored dark shade, `'default'` when nothing is stored or it is not dark. */
+export function readStoredDarkShade(): DarkShade {
+  if (typeof window === 'undefined') return 'default';
+
+  try {
+    const stored = window.localStorage.getItem(DARK_SHADE_STORAGE_KEY);
+    return stored === 'green' || stored === 'purple' ? stored : 'default';
+  } catch {
+    return 'default';
+  }
+}
+
 /** Paints a theme. The only place the DOM is touched. */
-export function applyTheme(theme: Theme): void {
+export function applyTheme(theme: Theme, shade: DarkShade = cachedShade): void {
   if (typeof document === 'undefined') return;
-  document.documentElement.classList.toggle(DARK_CLASS, theme === 'dark');
+
+  const root = document.documentElement;
+  root.classList.toggle(DARK_CLASS, theme === 'dark');
+  // The shade only exists while the scheme is dark; in light mode the classes are
+  // removed so a diffuse stylesheet cannot leak a tint into the light page.
+  for (const value of ['green', 'purple'] as const) {
+    root.classList.toggle(DARK_SHADE_CLASSES[value], theme === 'dark' && shade === value);
+  }
   // Keeps native widgets (scrollbars, form controls) in step with the page.
-  document.documentElement.style.colorScheme = theme;
+  root.style.colorScheme = theme;
 }
 
 function currentTheme(): Theme {
   if (cached === null) cached = readStoredTheme() ?? systemTheme();
   return cached;
+}
+
+function currentShade(): DarkShade {
+  return cachedShade;
 }
 
 /** Switches the theme, remembers the choice and repaints. */
@@ -87,6 +125,20 @@ export function setTheme(theme: Theme): void {
   } catch {
     // A refused write means the choice lasts for this page view only. Still better than
     // throwing and leaving the page half-updated.
+  }
+
+  for (const listener of [...listeners]) listener();
+}
+
+/** Switches the dark shade, remembers the choice and repaints. */
+export function setDarkShade(shade: DarkShade): void {
+  cachedShade = shade;
+  applyTheme(currentTheme(), shade);
+
+  try {
+    window.localStorage.setItem(DARK_SHADE_STORAGE_KEY, shade);
+  } catch {
+    // Same fallback as `setTheme`: a refused write only costs this page view.
   }
 
   for (const listener of [...listeners]) listener();
@@ -122,6 +174,8 @@ function subscribeTheme(listener: () => void): () => void {
 
 const getServerSnapshot = (): Theme => 'light';
 
+const getServerShadeSnapshot = (): DarkShade => 'default';
+
 /**
  * The current theme, and a way to change it.
  *
@@ -135,4 +189,11 @@ export function useTheme(): [Theme, (theme: Theme) => void] {
   const theme = useSyncExternalStore(subscribeTheme, currentTheme, getServerSnapshot);
 
   return [theme, setTheme];
+}
+
+/** The current dark shade and its setter. Mirrors `useTheme`'s store shape. */
+export function useDarkShade(): [DarkShade, (shade: DarkShade) => void] {
+  const shade = useSyncExternalStore(subscribeTheme, currentShade, getServerShadeSnapshot);
+
+  return [shade, setDarkShade];
 }

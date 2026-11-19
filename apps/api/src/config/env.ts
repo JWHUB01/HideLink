@@ -31,7 +31,7 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
 
   // --- HTTP server -----------------------------------------------------------
-  API_PORT: z.coerce.number().int().min(1).max(65_535).default(3001),
+  API_PORT: z.coerce.number().int().min(1).max(65_535).default(2101),
   API_HOST: z.string().min(1).default('127.0.0.1'),
 
   // --- Database -------------------------------------------------------------
@@ -44,7 +44,7 @@ const envSchema = z.object({
    */
   CORS_ORIGINS: z
     .string()
-    .default('http://localhost:3000')
+    .default('http://localhost:2100')
     .transform((value) =>
       value
         .split(',')

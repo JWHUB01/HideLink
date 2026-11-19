@@ -43,6 +43,7 @@ import { client } from '@/lib/anonymous-client';
 import { describeError } from '@/lib/error-text';
 import { apiRequest } from '@/lib/http';
 import { GENDER_LABELS, LANGUAGE_LABELS, describeCriteria } from '@/lib/labels';
+import { useDarkShade, type DarkShade } from '@/lib/theme';
 import { cn } from '@/lib/utils';
 import { useAppStore, type SessionInfo } from '@/store/app-store';
 
@@ -312,7 +313,13 @@ function CountryPicker({
 
   return (
     <fieldset className="flex flex-col gap-1.5" disabled={disabled}>
-      <legend className="text-sm font-medium">{legend}</legend>
+      {/*
+        The legend is screen-reader only: in the filters the country select shares a row
+        with «Любой», and a visible legend above it would push the cities/regions grid
+        below the level of the profile's own city/region (owner request 2026-11-19). The
+        select's own sr-only label and its first option carry the visible name.
+      */}
+      <legend className="sr-only">{legend}</legend>
 
       {/*
         The select comes first, right under its label, exactly as the profile's country
@@ -541,6 +548,10 @@ export function SettingsPanel({ session }: { session: SessionInfo }) {
       */}
       <div className="lg:col-span-2">
         <ModerationSection session={session} />
+      </div>
+
+      <div className="lg:col-span-2">
+        <AppearanceSection />
       </div>
     </div>
   );
@@ -826,13 +837,31 @@ function FiltersSection({ session }: { session: SessionInfo }) {
       </fieldset>
 
       <fieldset className="flex flex-col gap-2" disabled={save.isPending}>
-        <legend className="text-sm font-medium">{t('Где искать')}</legend>
+        {/*
+          The legend is screen-reader only and carries exactly the group name «Где искать»;
+          the visible header below it repeats it and floats the hint to the right. Keeping
+          the hint on the header line — instead of its own line — is what lets the
+          cities/regions grid sit at the height of the profile's own city/region pair
+          (owner request 2026-11-19).
+        */}
+        <legend className="sr-only">{t('Где искать')}</legend>
+        <div className="flex items-baseline justify-between gap-2 text-sm font-medium">
+          <span>{t('Где искать')}</span>
+          <span className="text-xs font-normal text-muted-foreground">
+            {anywhere
+              ? t('Подойдёт любая страна, город и регион.')
+              : t('Подойдёт любой из перечисленных.')}
+          </span>
+        </div>
 
         {/*
-          The neutral chip, the same one every other row has: «Любой» is the empty pair of
-          lists, never a value on the wire (docs/DECISIONS.md D25/D27).
+          The neutral chip and the country select share one row: «Любой» is the empty
+          pair of lists, and the country picker sits to its right (owner request
+          2026-11-19). `items-start` keeps the chip level with the select itself rather
+          than the whole picker column (which is taller because of the hint below the
+          select). The country legend is screen-reader only (see `CountryPicker`).
         */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-start gap-2">
           <button
             type="button"
             aria-pressed={anywhere}
@@ -847,19 +876,16 @@ function FiltersSection({ session }: { session: SessionInfo }) {
           >
             {t('Любой')}
           </button>
-          <span className="text-xs text-muted-foreground">
-            {anywhere
-              ? t('Подойдёт любая страна, город и регион.')
-              : t('Подойдёт любой из перечисленных.')}
-          </span>
-        </div>
 
-        <CountryPicker
-          legend={t('Страны')}
-          selected={countries}
-          onToggle={(value) => setCountries((current) => toggle(current, value))}
-          disabled={save.isPending}
-        />
+          <div className="min-w-0 flex-1">
+            <CountryPicker
+              legend={t('Страны')}
+              selected={countries}
+              onToggle={(value) => setCountries((current) => toggle(current, value))}
+              disabled={save.isPending}
+            />
+          </div>
+        </div>
 
         {/*
           Cities and regions sit side by side, in the same two-column grid as the
@@ -1060,6 +1086,85 @@ function ModerationSection({ session }: { session: SessionInfo }) {
         </p>
       ) : null}
     </section>
+  );
+}
+
+/** The dark shades a user can pick, with their translated labels. */
+const DARK_SHADE_OPTIONS: Array<{ value: DarkShade; label: MessageKey }> = [
+  { value: 'default', label: 'Классический' },
+  { value: 'green', label: 'Тёмно-зелёный' },
+  { value: 'purple', label: 'Тёмно-фиолетовый' },
+];
+
+/**
+ * The tint of the dark theme.
+ *
+ * The header button still only switches light/dark; the *shade* of the dark scheme is a
+ * deliberate choice made here, stored separately from the scheme so changing one never
+ * resets the other.
+ */
+function AppearanceSection() {
+  const { t } = useI18n();
+  const [shade, setShade] = useDarkShade();
+
+  return (
+    <section className={SECTION} aria-labelledby="settings-appearance">
+      <h3
+        id="settings-appearance"
+        className="flex items-center gap-2 text-sm font-semibold"
+      >
+        <PaletteIcon />
+        {t('Оттенок тёмной темы')}
+      </h3>
+
+      <div className="flex flex-col gap-1.5">
+        <div className="grid gap-2 sm:grid-cols-3">
+          {DARK_SHADE_OPTIONS.map((option) => {
+            const selected = shade === option.value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                aria-pressed={selected}
+                onClick={() => setShade(option.value)}
+                className={cn(
+                  'flex items-center gap-2 rounded-lg border p-2.5 text-left transition-colors',
+                  selected ? 'border-primary bg-accent/50' : 'border-border hover:bg-muted',
+                )}
+              >
+                <span className="flex items-center gap-2 text-sm font-medium">
+                  {t(option.label)}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {t('Оттенок влияет только на тёмную тему. Светлая тема остаётся неизменной.')}
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function PaletteIcon() {
+  return (
+    <svg
+      className="size-4 text-primary"
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="13.5" cy="6.5" r="0.5" fill="currentColor" />
+      <circle cx="17.5" cy="10.5" r="0.5" fill="currentColor" />
+      <circle cx="8.5" cy="7.5" r="0.5" fill="currentColor" />
+      <circle cx="6.5" cy="12.5" r="0.5" fill="currentColor" />
+      <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
+    </svg>
   );
 }
 

@@ -5,12 +5,16 @@ import {
   ADMIN_BAN_REASON_MIN_LENGTH,
   ADMIN_USER_ACTIVITY,
   ARCHIVE_RETENTION_MAX_DAYS,
+  AD_BACKGROUND_VARIANTS,
   ErrorCode,
   GENDERS,
   LANGUAGES,
   MEDIA_KINDS,
   PROFILE_LIMITS,
   REPORT_STATUSES,
+  type AdBackgroundVariant,
+  type AdminBackgroundListResponse,
+  type AdminBackgroundView,
   type AdminIdentityListResponse,
   type AdminIdentityView,
   type AdminOwnerChatListResponse,
@@ -45,6 +49,7 @@ import {
   CircleAlert,
   Eraser,
   Flag,
+  Image,
   Inbox,
   KeyRound,
   LoaderCircle,
@@ -56,6 +61,7 @@ import {
   Star,
   StarOff,
   Trash2,
+  Upload,
   UserCheck,
   UserPlus,
   UserX,
@@ -69,6 +75,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { setHtmlLangOverride } from '@/i18n';
+import { API_ORIGIN } from '@/lib/config';
 import { describeError, REPORT_REASON_LABELS } from '@/lib/error-text';
 import { apiRequest } from '@/lib/http';
 import {
@@ -352,6 +359,12 @@ function AdminPanel({ onLocked }: { onLocked: () => void }) {
     retry: false,
   });
 
+  const backgrounds = useQuery({
+    queryKey: ['admin', 'backgrounds'],
+    queryFn: () => apiRequest<AdminBackgroundListResponse>('/admin/backgrounds'),
+    retry: false,
+  });
+
   const reports = useQuery({
     queryKey: ['admin', 'reports'],
     queryFn: () => apiRequest<AdminReportListResponse>('/admin/reports'),
@@ -462,6 +475,12 @@ function AdminPanel({ onLocked }: { onLocked: () => void }) {
       />
 
       <UserAccessPanel search={accessSearch} onSearchChange={setAccessSearch} />
+
+      <BackgroundsSection
+        backgrounds={backgrounds.data?.backgrounds ?? []}
+        loading={backgrounds.isPending}
+        error={backgrounds.isError ? backgrounds.error : null}
+      />
 
       <OwnerInbox
         messages={inbox.data?.messages ?? []}
@@ -2213,6 +2232,181 @@ function OwnerInbox({
             ))}
           </ul>
         ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+/** How the owner's screen names each background slot. Exhaustive by variant. */
+const BACKGROUND_VARIANT_LABELS: Record<AdBackgroundVariant, { title: string; hint: string }> = {
+  rail: {
+    title: 'Боковая колонка',
+    hint: 'Вертикальное место по бокам главной страницы (skyscraper).',
+  },
+  banner: {
+    title: 'Баннер под настройками',
+    hint: 'Широкое место под свёрнутыми настройками на странице поиска.',
+  },
+  'chat-background': {
+    title: 'Фон переписки',
+    hint: 'Слой позади диалога. Картинка приглушается, чтобы не мешать чтению.',
+  },
+};
+
+/**
+ * The owner's decorative backgrounds for the advertising slots.
+ *
+ * Images are served publicly (they are content, not data), but only the owner may change
+ * them — the upload and remove mutations go through the guarded `/admin/backgrounds`
+ * surface. The preview simply loads the public URL; no user session is involved.
+ */
+function BackgroundsSection({
+  backgrounds,
+  loading,
+  error,
+}: {
+  backgrounds: readonly AdminBackgroundView[];
+  loading: boolean;
+  error: unknown;
+}) {
+  const queryClient = useQueryClient();
+
+  const upload = useMutation({
+    mutationFn: ({ variant, bytes }: { variant: AdBackgroundVariant; bytes: Uint8Array }) =>
+      apiRequest<AdminBackgroundView>(`/admin/backgrounds/${variant}`, {
+        method: 'POST',
+        body: new Blob([bytes.buffer as ArrayBuffer], { type: 'application/octet-stream' }),
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'backgrounds'] }),
+  });
+
+  const remove = useMutation({
+    mutationFn: (variant: AdBackgroundVariant) =>
+      apiRequest<{ removed: true }>(`/admin/backgrounds/${variant}`, { method: 'DELETE' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'backgrounds'] }),
+  });
+
+  const rowFor = (variant: AdBackgroundVariant): AdminBackgroundView | undefined =>
+    backgrounds.find((background) => background.variant === variant);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Image className="size-4 text-primary" aria-hidden="true" />
+          Фоны рекламных мест
+        </CardTitle>
+        <CardDescription>
+          Картинка-заглушка, которая занимает зарезервированное рекламное место, пока не
+          установлено рекламное объявление. Реклама не показывается: это просто фон. Виден всем
+          посетителям; изменить его можете только вы.
+        </CardDescription>
+      </CardHeader>
+
+      <CardContent className="flex flex-col gap-3">
+        {error ? <ErrorLine error={error} /> : null}
+
+        {loading ? (
+          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+            <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
+            Загружаю фоны…
+          </p>
+        ) : null}
+
+        <ul className="flex flex-col gap-3">
+          {AD_BACKGROUND_VARIANTS.map((variant) => {
+            const labels = BACKGROUND_VARIANT_LABELS[variant];
+            const current = rowFor(variant);
+            // The server answers every slot, with `url: null` when no picture is
+            // installed — so "has a picture" is `url !== null`, not "row exists".
+            const hasPicture = current?.url != null;
+            const busy = upload.isPending && upload.variables?.variant === variant;
+
+            return (
+              <li key={variant} className="rounded-lg border border-border p-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex min-w-0 flex-col gap-0.5">
+                    <span className="text-sm font-medium">{labels.title}</span>
+                    <span className="text-xs text-muted-foreground">{labels.hint}</span>
+                    {hasPicture && current ? (
+                      <span className="text-xs text-muted-foreground">
+                        Файл: {current.size} байт · {current.mimeType} · обновлён{' '}
+                        {formatTimestamp(current.updatedAt)}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <div className="flex shrink-0 items-center gap-2">
+                    {hasPicture ? (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        disabled={remove.isPending}
+                        onClick={() => {
+                          if (!window.confirm('Убрать этот фон? Место снова станет пустым.')) return;
+                          remove.mutate(variant);
+                        }}
+                      >
+                        <Trash2 className="size-4" aria-hidden="true" />
+                        Убрать
+                      </Button>
+                    ) : null}
+
+                    <label
+                      className={[
+                        'inline-flex cursor-pointer items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground',
+                        busy ? 'pointer-events-none opacity-60' : '',
+                      ].join(' ')}
+                    >
+                      {busy ? (
+                        <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
+                      ) : (
+                        <Upload className="size-4" aria-hidden="true" />
+                      )}
+                      {hasPicture ? 'Заменить' : 'Загрузить'}
+                      <input
+                        type="file"
+                        className="sr-only"
+                        accept="image/png,image/jpeg,image/webp,image/gif"
+                        disabled={busy}
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          event.target.value = '';
+                          if (!file) return;
+                          file.arrayBuffer().then((buffer) => {
+                            upload.mutate({ variant, bytes: new Uint8Array(buffer) });
+                          });
+                        }}
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                {current?.url ? (
+                  // The cached public picture is busted by its own update time, so a fresh
+                  // upload is visible in the preview immediately instead of a stale frame.
+                  <img
+                    src={`${API_ORIGIN}${current.url}?v=${encodeURIComponent(current.updatedAt)}`}
+                    alt={`Текущий фон: ${labels.title}`}
+                    className="mt-3 h-24 w-full rounded-md border border-border object-cover"
+                  />
+                ) : null}
+
+                {upload.isError && upload.variables?.variant === variant ? (
+                  <div className="mt-2">
+                    <ErrorLine error={upload.error} />
+                  </div>
+                ) : null}
+
+                {remove.isError && remove.variables === variant ? (
+                  <div className="mt-2">
+                    <ErrorLine error={remove.error} />
+                  </div>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
       </CardContent>
     </Card>
   );

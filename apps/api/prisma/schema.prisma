@@ -602,3 +602,37 @@ model PlatformPolicy {
 
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
 }
+
+// -----------------------------------------------------------------------------
+// Advertising backgrounds (owner-controlled)
+// -----------------------------------------------------------------------------
+
+/// The named decorative surfaces that may carry a picture (docs/DECISIONS.md D23/D28).
+///
+/// The enum value is the storage key, so the values are the wire contract: they match
+/// `AD_BACKGROUND_VARIANTS` in `@anonlink/shared`.
+enum AdBackgroundVariant {
+  /// A column beside the page content (skyscraper slot).
+  rail
+  /// The space under the folded settings (wide banner slot).
+  banner
+  /// The layer behind a conversation (full-bleed background slot).
+  chatBackground
+}
+
+/// One decorative background per ad slot, uploaded by the owner in `/admin`.
+///
+/// Exactly one row per variant — the enum value is the primary key — so the table is
+/// bounded at three rows and can never grow without bound, which is why it carries no
+/// retention column (schema rule 5). The bytes live in PostgreSQL, not on a writable
+/// disk path: a redeploy cannot orphan files and the API stays one moving part.
+/// SVG is rejected by the same rule as chat images: bytes served from our origin must
+/// never be parseable as a document (docs/SECURITY.md).
+model AdBackground {
+  variant   AdBackgroundVariant @id
+  /// Canonical MIME type decided by magic bytes on the server, never by the client.
+  mimeType  String              @db.VarChar(64)
+  bytes     Bytes
+  createdAt DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime            @updatedAt @db.Timestamptz(3)
+}

@@ -226,6 +226,6 @@ if (skipBuild) {
 
 console.log('\nГотово. Проект настроен.\n');
 console.log('  Запустить приложение:  pnpm dev');
-console.log('  Открыть в браузере:    http://localhost:3000');
+console.log('  Открыть в браузере:    http://localhost:2100');
 console.log('  Остановить:            Ctrl+C в том же окне');
 console.log('\n  Если что-то не работает:  pnpm diagnose\n');

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 
 import { ArchiveModule } from './archive/archive.module.js';
+import { BackgroundsModule } from './backgrounds/backgrounds.module.js';
 import { ChatModule } from './chat/chat.module.js';
 import { CommonModule } from './common/common.module.js';
 import { HttpErrorFilter } from './common/http-error.filter.js';
@@ -49,6 +50,7 @@ import { RealtimeModule } from './realtime/realtime.module.js';
     IdentityModule,
     ModerationModule,
     ArchiveModule,
+    BackgroundsModule,
     OwnerModule,
     FriendsModule,
     ChatModule,

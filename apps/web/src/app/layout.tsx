@@ -44,14 +44,15 @@ export const viewport: Viewport = {
 };
 
 /**
- * Applies the theme before the first paint.
+ * Applies the theme (and its dark shade) before the first paint.
  *
  * Inline and synchronous on purpose: anything asynchronous (a hook, an effect, a
  * component that renders the class) runs *after* the browser has already painted, which
  * is exactly the white flash a dark-theme user would see on every load. The literals here
- * must match `lib/theme.ts` (`anonlink.theme`, `dark`).
+ * must match `lib/theme.ts` (`anonlink.theme`, `anonlink.dark-shade`, `dark`,
+ * `dark-green`, `dark-purple`).
  */
-const THEME_SCRIPT = `(function(){try{var s=localStorage.getItem('anonlink.theme');var d=s==='dark'||(s!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches);var e=document.documentElement;e.classList.toggle('dark',d);e.style.colorScheme=d?'dark':'light';}catch(e){}})();`;
+const THEME_SCRIPT = `(function(){try{var s=localStorage.getItem('anonlink.theme');var d=s==='dark'||(s!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches);var h=localStorage.getItem('anonlink.dark-shade');var e=document.documentElement;e.classList.toggle('dark',d);e.classList.toggle('dark-green',d&&h==='green');e.classList.toggle('dark-purple',d&&h==='purple');e.style.colorScheme=d?'dark':'light';}catch(e){}})();`;
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const locale = await currentLocale();

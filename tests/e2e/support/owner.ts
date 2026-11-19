@@ -203,3 +203,26 @@ export async function resetInbox(): Promise<void> {
     await ownerApi(`/admin/messages/${message.id}`, { method: 'DELETE' });
   }
 }
+
+/**
+ * Removes every uploaded background, so a later run starts from the shipped default
+ * (no pictures at all).
+ *
+ * Teardown/repo-cleanup only: the pictures are global content served to every visitor,
+ * and the integration suite and other specs must not inherit them.
+ */
+export async function resetBackgrounds(): Promise<void> {
+  const response = await fetch(`${E2E_API_BASE}/admin/backgrounds`, {
+    headers: { authorization: `Bearer ${E2E_ADMIN_TOKEN}` },
+  });
+  if (!response.ok) {
+    throw new Error(`[e2e] owner API GET /admin/backgrounds answered ${response.status}`);
+  }
+
+  const body = (await response.json()) as {
+    backgrounds: Array<{ variant: string }>;
+  };
+  for (const background of body.backgrounds) {
+    await ownerApi(`/admin/backgrounds/${background.variant}`, { method: 'DELETE' });
+  }
+}

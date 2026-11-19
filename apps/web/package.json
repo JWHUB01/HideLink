@@ -5,9 +5,9 @@
   "description": "AnonLink web client: anonymous identity, random matching and direct chat.",
   "type": "module",
   "scripts": {
-    "dev": "next dev --port 3000",
+    "dev": "next dev --port 2100",
     "build": "next build",
-    "start": "next start --port 3000",
+    "start": "next start --port 2100",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint src",
     "clean": "node -e \"require('node:fs').rmSync('.next',{recursive:true,force:true})\""
@@ -20,7 +20,7 @@
     "clsx": "2.1.1",
     "dotenv": "18.0.8",
     "lucide-react": "1.59.0",
-    "next": "16.4.2",
+    "next": "16.4.6",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "socket.io-client": "4.8.4",
@@ -30,6 +30,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.3",
+    "@types/node": "26.6.6",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "tailwindcss": "4.3.3",

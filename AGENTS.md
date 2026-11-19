@@ -44,7 +44,7 @@ browser and the server need (validation, filter arithmetic, id formats, view typ
 
 ```powershell
 pnpm setup          # idempotent: Node check, .env, install, DB, migrations, build
-pnpm dev            # API on :3001, web on :3000
+pnpm dev            # API on :2101, web on :2100
 pnpm diagnose       # environment report (the owner may run this)
 pnpm lint           # eslint, all packages
 pnpm format:check   # prettier --check (use `pnpm format` to fix)
@@ -104,7 +104,7 @@ or the request/event surface.
 
 - Add rules to unit tests where the rule is a pure function (`packages/shared/src/*.test.ts`).
 - Add server behaviour to `apps/api/test/*.test.ts`. These run against a real API process (port
-  **3101**) and a `*_test` database; `apps/api/test/support/api-client.ts` speaks only the documented
+  **2101**) and a `*_test` database; `apps/api/test/support/api-client.ts` speaks only the documented
   protocol, deliberately.
 - **Matchmaking is global to the server.** A test that leaves a user queued will hand that user to
   the next test's first joiner, and the failure will look like a filter bug. Always leave the queue

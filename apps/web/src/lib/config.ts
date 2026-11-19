@@ -5,7 +5,7 @@
  * talks to the API origin directly (no Next.js rewrite) so that the session cookie,
  * CORS and the Socket.IO handshake all behave exactly as they will in production.
  */
-const rawApiUrl = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const rawApiUrl = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:2101';
 
 /** Origin of the API, without a trailing slash. */
 export const API_ORIGIN = rawApiUrl.replace(/\/+$/, '');
